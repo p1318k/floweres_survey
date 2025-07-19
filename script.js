@@ -154,7 +154,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const match = url.match(/open\?id=([a-zA-Z0-9_-]+)/);
         if (!match) return null;
-        return `https://drive.google.com/uc?export=view&id=${match[1]}`;
+        return `https://drive.usercontent.google.com/download?id=${match[1]}&export=view&authuser=0`;
     }
 
     function isValidUrl(string) {
