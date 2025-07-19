@@ -152,9 +152,32 @@ document.addEventListener('DOMContentLoaded', function() {
     function convertGoogleDriveUrl(url) {
         if (!url || typeof url !== 'string') return url;
 
-        const match = url.match(/open\?id=([a-zA-Z0-9_-]+)/);
-        if (!match) return null;
-        return `https://drive.usercontent.google.com/download?id=${match[1]}&export=view&authuser=0`;
+        // Google Drive 공유 링크 패턴 매칭
+        let fileId = null;
+        
+        // drive.google.com/open?id= 패턴
+        let match = url.match(/open\?id=([a-zA-Z0-9_-]+)/);
+        if (match) {
+            fileId = match[1];
+        }
+        
+        // drive.google.com/file/d/ID/view 패턴
+        if (!fileId) {
+            match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+            if (match) {
+                fileId = match[1];
+            }
+        }
+        
+        if (!fileId) return url;
+        
+        // 여러 형식으로 시도할 수 있도록 배열 반환
+        return {
+            primary: `https://drive.usercontent.google.com/download?id=${fileId}&export=view&authuser=0`,
+            fallback1: `https://drive.google.com/uc?export=view&id=${fileId}`,
+            fallback2: `https://lh3.googleusercontent.com/d/${fileId}`,
+            original: url
+        };
     }
 
     function isValidUrl(string) {
@@ -174,12 +197,40 @@ document.addEventListener('DOMContentLoaded', function() {
         const img = document.createElement('img');
         
         // Google Drive URL 변환
-        const convertedUrl = convertGoogleDriveUrl(imageUrl);
+        const convertedUrls = convertGoogleDriveUrl(imageUrl);
         
-        // URL이 유효한지 확인하고 적절한 이미지 설정
-        if (isValidUrl(convertedUrl)) {
-            img.src = convertedUrl;
-        } else {
+        // 변환된 URL이 객체인 경우 (Google Drive URL)
+        if (typeof convertedUrls === 'object' && convertedUrls.primary) {
+            img.src = convertedUrls.primary;
+            
+            let fallbackIndex = 0;
+            const fallbacks = [convertedUrls.fallback1, convertedUrls.fallback2];
+            
+            img.onerror = function() {
+                if (fallbackIndex < fallbacks.length) {
+                    console.warn(`이미지 로드 실패, fallback ${fallbackIndex + 1} 시도: ${fallbacks[fallbackIndex]}`);
+                    this.src = fallbacks[fallbackIndex];
+                    fallbackIndex++;
+                } else {
+                    console.warn(`모든 Google Drive URL 실패: ${imageUrl}`);
+                    this.src = getPlaceholderImage();
+                    this.alt = '이미지를 불러올 수 없습니다';
+                    this.title = `Google Drive 이미지 로드 실패\n원본: ${imageUrl}`;
+                }
+            };
+        } 
+        // 일반 URL인 경우
+        else if (isValidUrl(convertedUrls || imageUrl)) {
+            img.src = convertedUrls || imageUrl;
+            
+            img.onerror = function() {
+                console.warn(`이미지 로드 실패: ${imageUrl}`);
+                this.src = getPlaceholderImage();
+                this.alt = '이미지를 불러올 수 없습니다';
+            };
+        }
+        // 유효하지 않은 URL인 경우
+        else {
             img.src = getPlaceholderImage();
             img.title = `원본 데이터: ${imageUrl}`;
         }
@@ -187,15 +238,11 @@ document.addEventListener('DOMContentLoaded', function() {
         img.alt = name;
         img.loading = 'lazy';
         
-        img.onerror = function() {
-            console.warn(`이미지 로드 실패: ${imageUrl}`);
-            this.src = getPlaceholderImage();
-            this.alt = '이미지를 불러올 수 없습니다';
-        };
-        
         img.addEventListener('click', () => {
-            if (isValidUrl(convertedUrl)) {
-                openModal(convertedUrl, name);
+            const urlToOpen = typeof convertedUrls === 'object' ? convertedUrls.original : (convertedUrls || imageUrl);
+            if (isValidUrl(urlToOpen)) {
+                // 새 탭에서 원본 Google Drive 링크 열기
+                window.open(urlToOpen, '_blank');
             } else {
                 showInfo(`"${name}"의 이미지 URL이 유효하지 않습니다.\n원본 데이터: ${imageUrl}`);
             }
@@ -206,7 +253,8 @@ document.addEventListener('DOMContentLoaded', function() {
         caption.textContent = name;
         
         // URL이 유효하지 않은 경우 표시
-        if (!isValidUrl(convertedUrl)) {
+        const finalUrl = typeof convertedUrls === 'object' ? convertedUrls.primary : convertedUrls;
+        if (!isValidUrl(finalUrl)) {
             caption.style.color = '#e74c3c';
             caption.title = `유효하지 않은 URL: ${imageUrl}`;
         }
