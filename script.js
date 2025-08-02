@@ -430,25 +430,31 @@ document.addEventListener('DOMContentLoaded', function() {
     function tryAlternativeImageLoad(imgElement, originalUrl, name) {
         console.log(`Starting alternative image load methods for ${name}`);
         
-        // 방법 1: Fetch API를 사용하여 이미지를 Base64로 변환
-        tryFetchToBase64(imgElement, originalUrl, name)
-            .catch(() => {
-                console.log(`Fetch to Base64 failed for ${name}, trying iframe method`);
-                // 방법 2: iframe을 이용한 이미지 로드
-                return tryIframeMethod(imgElement, originalUrl, name);
-            })
-            .catch(() => {
-                console.log(`Iframe method failed for ${name}, trying JSONP proxy`);
-                // 방법 3: JSONP 스타일 프록시 시도
-                return tryJSONPProxy(imgElement, originalUrl, name);
-            })
-            .catch(() => {
-                console.log(`All alternative methods failed for ${name}, showing error image`);
-                // 최종 실패 - 에러 이미지 표시
-                imgElement.src = createErrorImageDataUrl(name);
-                imgElement.style.backgroundColor = '#f8f9fa';
-                imgElement.style.border = '2px dashed #dee2e6';
-            });
+        return new Promise((resolve, reject) => {
+            // 방법 1: Fetch API를 사용하여 이미지를 Base64로 변환
+            tryFetchToBase64(imgElement, originalUrl, name)
+                .then(resolve)
+                .catch(() => {
+                    console.log(`Fetch to Base64 failed for ${name}, trying iframe method`);
+                    // 방법 2: iframe을 이용한 이미지 로드
+                    return tryIframeMethod(imgElement, originalUrl, name);
+                })
+                .then(resolve)
+                .catch(() => {
+                    console.log(`Iframe method failed for ${name}, trying JSONP proxy`);
+                    // 방법 3: JSONP 스타일 프록시 시도
+                    return tryJSONPProxy(imgElement, originalUrl, name);
+                })
+                .then(resolve)
+                .catch(() => {
+                    console.log(`All alternative methods failed for ${name}, showing error image`);
+                    // 최종 실패 - 에러 이미지 표시
+                    imgElement.src = createErrorImageDataUrl(name);
+                    imgElement.style.backgroundColor = '#f8f9fa';
+                    imgElement.style.border = '2px dashed #dee2e6';
+                    reject(new Error('All alternative methods failed'));
+                });
+        });
     }
 
     function tryFetchToBase64(imgElement, url, name) {
