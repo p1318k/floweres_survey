@@ -7,47 +7,66 @@ document.addEventListener('DOMContentLoaded', function() {
     const closeModal = document.getElementsByClassName('close')[0];
     const testButton = document.getElementById('testButton');
 
+    // 요소 존재 확인
+    if (!fileInput || !gallery || !modal || !modalImage || !modalTitle || !closeModal) {
+        console.error('Required DOM elements not found');
+        console.error('fileInput:', fileInput);
+        console.error('gallery:', gallery);
+        console.error('modal:', modal);
+        console.error('modalImage:', modalImage);
+        console.error('modalTitle:', modalTitle);
+        console.error('closeModal:', closeModal);
+        return;
+    }
+
+    console.log('✅ All required DOM elements found successfully');
+    console.log('📋 Excel 이미지 갤러리 초기화 완료');
+
     fileInput.addEventListener('change', handleFileSelect);
     closeModal.addEventListener('click', () => modal.style.display = 'none');
     modal.addEventListener('click', (e) => {
         if (e.target === modal) modal.style.display = 'none';
     });
     
-    // 테스트 버튼 이벤트
-    testButton.addEventListener('click', () => {
-        console.clear();
-        console.log('=== 네이버 설문조사 이미지 테스트 시작 ===');
-        console.log('⚠️  CORS 정책으로 인해 네이버 설문조사 이미지는 직접 로드가 제한될 수 있습니다.');
-        console.log('📋 여러 방법을 시도하여 이미지 로드를 시도합니다:');
-        console.log('   1. 직접 이미지 URL');
-        console.log('   2. Canvas 프록시');
-        console.log('   3. 외부 프록시 서비스');
-        console.log('   4. JSONP 스타일 프록시');
-        
-        const originalWrapperUrl = 'https://survey.naver.com/form/imageView?src=https%3A%2F%2Fsurvey.naver.com%2Fform%2Fimages%2F20250719115938855-758762-d1dde9ec.png';
-        const directImageUrl = 'https://survey.naver.com/form/images/20250719115938855-758762-d1dde9ec.png';
-        
-        console.log('원본 래퍼 URL:', originalWrapperUrl);
-        console.log('직접 이미지 URL:', directImageUrl);
-        
-        const testData = [
-            {
-                name: '하은선 (래퍼 URL)',
-                imageUrl: originalWrapperUrl
-            },
-            {
-                name: '하은선 (직접 URL)',
-                imageUrl: directImageUrl
-            },
-            {
-                name: '테스트용 이미지 (작동 확인)',
-                imageUrl: 'https://picsum.photos/300/400?random=1'
-            }
-        ];
-        
-        console.log('테스트 데이터:', testData);
-        displayGallery(testData);
-    });
+    // 테스트 버튼이 존재하는 경우에만 이벤트 리스너 추가
+    if (testButton) {
+        testButton.addEventListener('click', () => {
+            console.clear();
+            console.log('=== 네이버 설문조사 이미지 테스트 시작 ===');
+            console.log('⚠️  CORS 정책으로 인해 네이버 설문조사 이미지는 직접 로드가 제한될 수 있습니다.');
+            console.log('📋 여러 방법을 시도하여 이미지 로드를 시도합니다:');
+            console.log('   1. 직접 이미지 URL');
+            console.log('   2. Canvas 프록시');
+            console.log('   3. 외부 프록시 서비스');
+            console.log('   4. JSONP 스타일 프록시');
+            
+            const originalWrapperUrl = 'https://survey.naver.com/form/imageView?src=https%3A%2F%2Fsurvey.naver.com%2Fform%2Fimages%2F20250719115938855-758762-d1dde9ec.png';
+            const directImageUrl = 'https://survey.naver.com/form/images/20250719115938855-758762-d1dde9ec.png';
+            
+            console.log('원본 래퍼 URL:', originalWrapperUrl);
+            console.log('직접 이미지 URL:', directImageUrl);
+            
+            const testData = [
+                {
+                    name: '하은선 (래퍼 URL)',
+                    imageUrl: originalWrapperUrl
+                },
+                {
+                    name: '하은선 (직접 URL)',
+                    imageUrl: directImageUrl
+                },
+                {
+                    name: '테스트용 이미지 (작동 확인)',
+                    imageUrl: 'https://picsum.photos/300/400?random=1'
+                }
+            ];
+            
+            console.log('테스트 데이터:', testData);
+            displayGallery(testData);
+        });
+    } else {
+        console.warn('Test button not found, skipping test button event listener');
+    }
 
     function handleFileSelect(event) {
         const file = event.target.files[0];
