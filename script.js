@@ -6,9 +6,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const modalTitle = document.getElementById('modalTitle');
     const closeModal = document.getElementsByClassName('close')[0];
     const testButton = document.getElementById('testButton');
-    const testWorkingButton = document.getElementById('testWorkingButton');
-    const urlInput = document.getElementById('urlInput');
-    const urlTestButton = document.getElementById('urlTestButton');
 
     fileInput.addEventListener('change', handleFileSelect);
     closeModal.addEventListener('click', () => modal.style.display = 'none');
@@ -18,53 +15,27 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 테스트 버튼 이벤트
     testButton.addEventListener('click', () => {
-        console.clear(); // 콘솔 클리어
-        console.log('=== 하은선 이미지 테스트 시작 ===');
-        
-        const originalUrl = 'https://survey.naver.com/form/imageView?src=https%3A%2F%2Fsurvey.naver.com%2Fform%2Fimages%2F20250719115938855-758762-d1dde9ec.png';
-        console.log('원본 URL:', originalUrl);
-        
-        // URL 디코딩 테스트
-        const srcMatch = originalUrl.match(/src=([^&]+)/);
-        if (srcMatch) {
-            const decodedUrl = decodeURIComponent(srcMatch[1]);
-            console.log('디코딩된 URL:', decodedUrl);
-        }
-        
-        const testData = [{
-            name: '하은선',
-            imageUrl: originalUrl
-        }];
-        console.log('테스트 데이터:', testData);
-        displayGallery(testData);
-    });
-    
-    // 작동 테스트 버튼 이벤트
-    testWorkingButton.addEventListener('click', () => {
         console.clear();
-        console.log('=== 작동 테스트 시작 ===');
+        console.log('=== 네이버 설문조사 이미지 테스트 시작 ===');
         
-        const testData = [{
-            name: '테스트 고양이',
-            imageUrl: 'https://cataas.com/cat'
-        }];
+        const originalWrapperUrl = 'https://survey.naver.com/form/imageView?src=https%3A%2F%2Fsurvey.naver.com%2Fform%2Fimages%2F20250719115938855-758762-d1dde9ec.png';
+        const directImageUrl = 'https://survey.naver.com/form/images/20250719115938855-758762-d1dde9ec.png';
+        
+        console.log('원본 래퍼 URL:', originalWrapperUrl);
+        console.log('직접 이미지 URL:', directImageUrl);
+        
+        const testData = [
+            {
+                name: '하은선 (래퍼 URL)',
+                imageUrl: originalWrapperUrl
+            },
+            {
+                name: '하은선 (직접 URL)',
+                imageUrl: directImageUrl
+            }
+        ];
+        
         console.log('테스트 데이터:', testData);
-        displayGallery(testData);
-    });
-    
-    // URL 테스트 버튼 이벤트
-    urlTestButton.addEventListener('click', () => {
-        const url = urlInput.value.trim();
-        if (!url) {
-            alert('URL을 입력해주세요.');
-            return;
-        }
-        
-        const testData = [{
-            name: 'URL 테스트',
-            imageUrl: url
-        }];
-        console.log('Testing with custom URL:', testData);
         displayGallery(testData);
     });
 
@@ -198,7 +169,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (srcMatch) {
                     processedUrl = decodeURIComponent(srcMatch[1]);
                     console.log('Extracted Naver survey image URL:', processedUrl);
+                    
+                    // 추출된 URL이 올바른 직접 이미지 URL인지 확인
+                    if (processedUrl.includes('survey.naver.com/form/images/')) {
+                        console.log('Direct image URL confirmed:', processedUrl);
+                        return processedUrl;
+                    }
                 }
+            }
+            
+            // 이미 직접 이미지 URL인 경우 (사용자가 제공한 실제 URL 패턴)
+            if (url.includes('survey.naver.com/form/images/') && url.match(/\.(png|jpg|jpeg|gif|webp)$/i)) {
+                console.log('Direct Naver image URL detected:', url);
+                return url;
             }
             
             // 일반적인 URL 디코딩
@@ -238,7 +221,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // 상태 표시 추가
                 const statusDiv = this.parentElement.querySelector('.load-status') || document.createElement('div');
                 statusDiv.className = 'load-status error';
-                statusDiv.innerHTML = `❌ 이미지 로드 실패<br><small>원본 URL 확인 필요</small>`;
+                statusDiv.textContent = '이미지 로드 실패';
                 if (!this.parentElement.querySelector('.load-status')) {
                     this.parentElement.appendChild(statusDiv);
                 }
@@ -248,17 +231,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log(`Image loaded successfully for ${item.name}`);
                 const statusDiv = this.parentElement.querySelector('.load-status');
                 if (statusDiv) {
-                    statusDiv.className = 'load-status success';
-                    statusDiv.innerHTML = '✅ 이미지 로드 완료';
-                    setTimeout(() => statusDiv.remove(), 2000);
+                    statusDiv.remove();
                 }
             };
-            
-            // 로딩 상태 표시
-            const loadingDiv = document.createElement('div');
-            loadingDiv.className = 'load-status loading';
-            loadingDiv.innerHTML = '🔄 이미지 로딩 중...';
-            galleryItem.appendChild(loadingDiv);
             
             // 다양한 이미지 URL 시도
             tryLoadImage(img, item.imageUrl, item.name);
@@ -286,197 +261,107 @@ document.addEventListener('DOMContentLoaded', function() {
     function tryLoadImage(imgElement, originalUrl, name) {
         console.log(`Trying to load image for ${name}: ${originalUrl}`);
         
-        // 방법 1: fetch API로 blob 가져오기 시도
-        tryFetchAsBlob(imgElement, originalUrl, name)
-            .catch(() => {
-                console.log(`Fetch failed for ${name}, trying direct load`);
-                // 방법 2: 직접 로드 시도
-                return tryDirectLoad(imgElement, originalUrl, name);
-            })
-            .catch(() => {
-                console.log(`Direct load failed for ${name}, trying alternatives`);
-                // 방법 3: 대안 방법들 시도
-                setTimeout(() => tryAlternativeImageLoad(imgElement, originalUrl, name), 1000);
-            });
-    }
-
-    function tryFetchAsBlob(imgElement, url, name) {
-        return new Promise((resolve, reject) => {
-            // 네이버 설문조사 URL 처리
-            let fetchUrl = url;
-            if (url.includes('survey.naver.com/form/imageView')) {
-                const srcMatch = url.match(/src=([^&]+)/);
-                if (srcMatch) {
-                    fetchUrl = decodeURIComponent(srcMatch[1]);
-                    console.log(`Extracted URL for fetch: ${fetchUrl}`);
-                }
-            }
-            
-            fetch(fetchUrl, {
-                mode: 'cors',
-                cache: 'no-cache',
-                headers: {
-                    'Accept': 'image/*',
-                }
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-                return response.blob();
-            })
-            .then(blob => {
-                const blobUrl = URL.createObjectURL(blob);
-                imgElement.onload = () => {
-                    console.log(`Fetch successful for ${name}`);
-                    URL.revokeObjectURL(blobUrl); // 메모리 정리
-                    resolve();
-                };
-                imgElement.onerror = () => {
-                    URL.revokeObjectURL(blobUrl);
-                    reject(new Error('Blob load failed'));
-                };
-                imgElement.src = blobUrl;
-            })
-            .catch(error => {
-                console.log(`Fetch error for ${name}:`, error);
-                reject(error);
-            });
-        });
-    }
-
-    function tryDirectLoad(imgElement, originalUrl, name) {
-        return new Promise((resolve, reject) => {
-            const img = new Image();
-            img.crossOrigin = 'anonymous';
-            img.onload = function() {
-                console.log(`Direct load successful for ${name}`);
-                imgElement.src = originalUrl;
-                resolve();
-            };
-            img.onerror = function() {
-                console.log(`Direct load failed for ${name}`);
-                reject(new Error('Direct load failed'));
-            };
-            img.src = originalUrl;
-            
-            // 타임아웃 설정
-            setTimeout(() => {
-                if (!img.complete) {
-                    reject(new Error('Direct load timeout'));
-                }
-            }, 5000);
-        });
-    }
-
-    function tryAlternativeImageLoad(imgElement, originalUrl, name) {
-        console.log(`Starting alternative image load for ${name}`);
-        
-        // 네이버 설문조사 URL에서 실제 이미지 URL 추출
-        let directImageUrl = originalUrl;
+        // 네이버 설문조사 URL인 경우 특별 처리
         if (originalUrl.includes('survey.naver.com/form/imageView')) {
+            console.log(`Naver survey URL detected, extracting direct image URL...`);
+            
+            // 직접 이미지 URL 추출
             const srcMatch = originalUrl.match(/src=([^&]+)/);
             if (srcMatch) {
-                directImageUrl = decodeURIComponent(srcMatch[1]);
-                console.log(`Extracted direct image URL: ${directImageUrl}`);
+                const directUrl = decodeURIComponent(srcMatch[1]);
+                console.log(`Trying direct Naver image URL: ${directUrl}`);
                 
-                // 직접 URL로 시도
+                // 직접 URL 먼저 시도
                 const directImg = new Image();
-                directImg.crossOrigin = 'anonymous';
                 directImg.onload = function() {
-                    console.log(`Direct image URL successful for ${name}`);
-                    imgElement.src = directImageUrl;
-                    return;
+                    console.log(`Direct Naver URL successful for ${name}`);
+                    imgElement.src = directUrl;
                 };
                 directImg.onerror = function() {
-                    console.log(`Direct image URL failed, trying proxies`);
-                    tryProxies();
+                    console.log(`Direct Naver URL failed, trying original wrapper URL`);
+                    // 직접 URL 실패 시 원본 래퍼 URL 시도
+                    tryOriginalUrl();
                 };
-                directImg.src = directImageUrl;
+                directImg.src = directUrl;
                 return;
             }
         }
         
-        tryProxies();
+        // 일반 URL 또는 네이버 URL 추출 실패한 경우
+        tryOriginalUrl();
         
-        function tryProxies() {
-            // CORS 프록시 서버들을 통해 시도
-            const corsProxies = [
-                'https://api.allorigins.win/raw?url=',
-                'https://corsproxy.io/?',
-                'https://cors.bridged.cc/',
-                'https://thingproxy.freeboard.io/fetch/'
-            ];
+        function tryOriginalUrl() {
+            imgElement.src = originalUrl;
             
-            let proxyIndex = 0;
-            
-            function tryNextProxy() {
-                if (proxyIndex >= corsProxies.length) {
-                    console.log(`All proxy attempts failed for ${name}`);
-                    // 최후의 수단: base64 변환된 placeholder 이미지
-                    imgElement.src = createErrorImageDataUrl(name);
-                    return;
+            // 타임아웃 설정 (5초 후 실패 처리)
+            setTimeout(() => {
+                if (!imgElement.complete || imgElement.naturalWidth === 0) {
+                    console.log(`Image load timeout for ${name}, trying alternative methods`);
+                    tryAlternativeImageLoad(imgElement, originalUrl, name);
                 }
-                
-                const proxyUrl = corsProxies[proxyIndex] + encodeURIComponent(directImageUrl);
-                console.log(`Trying proxy ${proxyIndex + 1} for ${name}: ${proxyUrl}`);
-                
-                const testImg = new Image();
-                testImg.crossOrigin = 'anonymous';
-                testImg.onload = function() {
-                    console.log(`Proxy ${proxyIndex + 1} successful for ${name}`);
-                    imgElement.src = proxyUrl;
-                };
-                testImg.onerror = function() {
-                    console.log(`Proxy ${proxyIndex + 1} failed for ${name}`);
-                    proxyIndex++;
-                    setTimeout(tryNextProxy, 1000); // 1초 대기 후 다음 프록시 시도
-                };
-                testImg.src = proxyUrl;
+            }, 5000);
+        }
+    }
+
+    function tryAlternativeImageLoad(imgElement, originalUrl, name) {
+        // CORS 프록시 서버들을 통해 시도
+        const corsProxies = [
+            'https://api.allorigins.win/raw?url=',
+            'https://cors-anywhere.herokuapp.com/',
+            'https://thingproxy.freeboard.io/fetch/'
+        ];
+        
+        let proxyIndex = 0;
+        
+        function tryNextProxy() {
+            if (proxyIndex >= corsProxies.length) {
+                console.log(`All proxy attempts failed for ${name}`);
+                imgElement.onerror();
+                return;
             }
             
-            tryNextProxy();
+            const proxyUrl = corsProxies[proxyIndex] + encodeURIComponent(originalUrl);
+            console.log(`Trying proxy ${proxyIndex + 1} for ${name}: ${proxyUrl}`);
+            
+            const testImg = new Image();
+            testImg.onload = function() {
+                console.log(`Proxy ${proxyIndex + 1} successful for ${name}`);
+                imgElement.src = proxyUrl;
+            };
+            testImg.onerror = function() {
+                console.log(`Proxy ${proxyIndex + 1} failed for ${name}`);
+                proxyIndex++;
+                tryNextProxy();
+            };
+            testImg.src = proxyUrl;
         }
+        
+        tryNextProxy();
     }
 
     function createErrorImageDataUrl(name) {
         const canvas = document.createElement('canvas');
-        canvas.width = 300;
+        canvas.width = 200;
         canvas.height = 200;
         const ctx = canvas.getContext('2d');
         
-        // 그라데이션 배경
-        const gradient = ctx.createLinearGradient(0, 0, 0, 200);
-        gradient.addColorStop(0, '#f8f9fa');
-        gradient.addColorStop(1, '#e9ecef');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, 300, 200);
+        // 배경
+        ctx.fillStyle = '#f8f9fa';
+        ctx.fillRect(0, 0, 200, 200);
         
         // 테두리
         ctx.strokeStyle = '#dee2e6';
         ctx.lineWidth = 2;
-        ctx.setLineDash([8, 4]);
-        ctx.strokeRect(10, 10, 280, 180);
-        
-        // 아이콘 (이미지 없음)
-        ctx.fillStyle = '#6c757d';
-        ctx.fillRect(140, 60, 20, 15);
-        ctx.fillRect(135, 65, 30, 20);
-        ctx.fillRect(130, 75, 40, 30);
+        ctx.setLineDash([5, 5]);
+        ctx.strokeRect(5, 5, 190, 190);
         
         // 텍스트
-        ctx.fillStyle = '#495057';
-        ctx.font = 'bold 16px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText('이미지를 불러올 수 없습니다', 150, 120);
-        
-        ctx.font = '14px Arial';
         ctx.fillStyle = '#6c757d';
-        ctx.fillText(name, 150, 140);
-        
-        ctx.font = '12px Arial';
-        ctx.fillStyle = '#868e96';
-        ctx.fillText('네트워크 오류 또는 CORS 정책', 150, 160);
+        ctx.font = '14px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('이미지 없음', 100, 90);
+        ctx.fillText(name, 100, 110);
+        ctx.fillText('로드 실패', 100, 130);
         
         return canvas.toDataURL();
     }
