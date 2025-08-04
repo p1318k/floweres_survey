@@ -34,11 +34,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.clear();
             console.log('=== 네이버 설문조사 이미지 테스트 시작 ===');
             console.log('⚠️  CORS 정책으로 인해 네이버 설문조사 이미지는 직접 로드가 제한될 수 있습니다.');
-            console.log('📋 여러 방법을 시도하여 이미지 로드를 시도합니다:');
-            console.log('   1. 직접 이미지 URL');
-            console.log('   2. Canvas 프록시');
-            console.log('   3. 외부 프록시 서비스');
-            console.log('   4. JSONP 스타일 프록시');
+            console.log('📋 직접 이미지 URL을 사용하여 이미지 로드를 시도합니다.');
             
             const originalWrapperUrl = 'https://survey.naver.com/form/imageView?src=https%3A%2F%2Fsurvey.naver.com%2Fform%2Fimages%2F20250719115938855-758762-d1dde9ec.png';
             const directImageUrl = 'https://survey.naver.com/form/images/20250719115938855-758762-d1dde9ec.png';
@@ -300,8 +296,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 const directUrl = decodeURIComponent(srcMatch[1]);
                 console.log(`Trying direct Naver image URL: ${directUrl}`);
                 
-                // 여러 방법을 순차적으로 시도
-                tryMultipleMethods(imgElement, directUrl, name, originalUrl);
+                // 직접 URL로 시도
+                imgElement.src = directUrl;
                 return;
             }
         }
@@ -315,269 +311,13 @@ document.addEventListener('DOMContentLoaded', function() {
             // 타임아웃 설정 (3초 후 실패 처리로 단축)
             setTimeout(() => {
                 if (!imgElement.complete || imgElement.naturalWidth === 0) {
-                    console.log(`Image load timeout for ${name}, trying alternative methods`);
-                    tryAlternativeImageLoad(imgElement, originalUrl, name);
-                }
-            }, 3000);
-        }
-    }
-
-    function tryMultipleMethods(imgElement, directUrl, name, fallbackUrl) {
-        console.log(`Trying multiple methods for ${name}`);
-        
-        // 방법 1: 직접 URL 시도
-        const method1 = new Promise((resolve, reject) => {
-            const directImg = new Image();
-            directImg.onload = () => {
-                console.log(`Direct URL successful for ${name}`);
-                imgElement.src = directUrl;
-                resolve();
-            };
-            directImg.onerror = () => reject(new Error('Direct URL failed'));
-            directImg.src = directUrl;
-            
-            setTimeout(() => reject(new Error('Direct URL timeout')), 3000);
-        });
-
-        // 방법 2: Canvas 프록시 시도
-        const method2 = new Promise((resolve, reject) => {
-            setTimeout(() => {
-                tryCanvasProxy(imgElement, directUrl, name)
-                    .then(resolve)
-                    .catch(reject);
-            }, 1000);
-        });
-
-        // 방법 3: 대안 방법들
-        const method3 = new Promise((resolve, reject) => {
-            setTimeout(() => {
-                tryAlternativeImageLoad(imgElement, directUrl, name)
-                    .then(resolve)
-                    .catch(reject);
-            }, 2000);
-        });
-
-        // 첫 번째 성공하는 방법 사용
-        Promise.race([method1, method2, method3])
-            .catch(() => {
-                console.log(`All methods failed for ${name}, trying fallback`);
-                // 모든 방법 실패 시 원본 URL로 폴백
-                imgElement.src = fallbackUrl;
-                setTimeout(() => {
-                    if (!imgElement.complete || imgElement.naturalWidth === 0) {
-                        imgElement.src = createErrorImageDataUrl(name);
-                    }
-                }, 3000);
-            });
-    }
-
-    function tryCanvasProxy(imgElement, url, name) {
-        return new Promise((resolve, reject) => {
-            console.log(`Trying Canvas proxy for ${name}`);
-            
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            const proxyImg = new Image();
-            
-            // CORS 우회를 위한 설정
-            proxyImg.crossOrigin = 'anonymous';
-            
-            proxyImg.onload = function() {
-                try {
-                    canvas.width = proxyImg.width;
-                    canvas.height = proxyImg.height;
-                    ctx.drawImage(proxyImg, 0, 0);
-                    
-                    const dataURL = canvas.toDataURL('image/png');
-                    imgElement.src = dataURL;
-                    console.log(`Canvas proxy successful for ${name}`);
-                    resolve();
-                } catch (error) {
-                    console.log(`Canvas proxy error for ${name}:`, error);
-                    reject(error);
-                }
-            };
-            
-            proxyImg.onerror = function() {
-                console.log(`Canvas proxy image load failed for ${name}`);
-                reject(new Error('Canvas proxy failed'));
-            };
-            
-            // 다양한 프록시 URL 시도
-            const proxyUrls = [
-                url,
-                `https://images.weserv.nl/?url=${encodeURIComponent(url)}`,
-                `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
-            ];
-            
-            let urlIndex = 0;
-            function tryNextUrl() {
-                if (urlIndex >= proxyUrls.length) {
-                    reject(new Error('All canvas proxy URLs failed'));
-                    return;
-                }
-                
-                console.log(`Trying canvas proxy URL ${urlIndex + 1}: ${proxyUrls[urlIndex]}`);
-                proxyImg.src = proxyUrls[urlIndex];
-                urlIndex++;
-            }
-            
-            proxyImg.onerror = tryNextUrl;
-            tryNextUrl();
-        });
-    }
-
-    function tryAlternativeImageLoad(imgElement, originalUrl, name) {
-        console.log(`Starting alternative image load methods for ${name}`);
-        
-        return new Promise((resolve, reject) => {
-            // 방법 1: Fetch API를 사용하여 이미지를 Base64로 변환
-            tryFetchToBase64(imgElement, originalUrl, name)
-                .then(resolve)
-                .catch(() => {
-                    console.log(`Fetch to Base64 failed for ${name}, trying iframe method`);
-                    // 방법 2: iframe을 이용한 이미지 로드
-                    return tryIframeMethod(imgElement, originalUrl, name);
-                })
-                .then(resolve)
-                .catch(() => {
-                    console.log(`Iframe method failed for ${name}, trying JSONP proxy`);
-                    // 방법 3: JSONP 스타일 프록시 시도
-                    return tryJSONPProxy(imgElement, originalUrl, name);
-                })
-                .then(resolve)
-                .catch(() => {
-                    console.log(`All alternative methods failed for ${name}, showing error image`);
-                    // 최종 실패 - 에러 이미지 표시
+                    console.log(`Image load timeout for ${name}, showing error image`);
                     imgElement.src = createErrorImageDataUrl(name);
                     imgElement.style.backgroundColor = '#f8f9fa';
                     imgElement.style.border = '2px dashed #dee2e6';
-                    reject(new Error('All alternative methods failed'));
-                });
-        });
-    }
-
-    function tryFetchToBase64(imgElement, url, name) {
-        return new Promise((resolve, reject) => {
-            // 네이버 설문조사 URL에서 직접 이미지 URL 추출
-            let targetUrl = url;
-            if (url.includes('survey.naver.com/form/imageView')) {
-                const srcMatch = url.match(/src=([^&]+)/);
-                if (srcMatch) {
-                    targetUrl = decodeURIComponent(srcMatch[1]);
                 }
-            }
-
-            fetch(targetUrl, {
-                mode: 'no-cors',
-                cache: 'no-cache'
-            })
-            .then(response => response.blob())
-            .then(blob => {
-                const reader = new FileReader();
-                reader.onload = function() {
-                    console.log(`Base64 conversion successful for ${name}`);
-                    imgElement.src = reader.result;
-                    resolve();
-                };
-                reader.onerror = () => reject(new Error('Base64 conversion failed'));
-                reader.readAsDataURL(blob);
-            })
-            .catch(error => {
-                console.log(`Fetch to Base64 error for ${name}:`, error);
-                reject(error);
-            });
-        });
-    }
-
-    function tryIframeMethod(imgElement, url, name) {
-        return new Promise((resolve, reject) => {
-            console.log(`Trying iframe method for ${name}`);
-            
-            // 숨겨진 iframe 생성
-            const iframe = document.createElement('iframe');
-            iframe.style.display = 'none';
-            iframe.style.width = '0';
-            iframe.style.height = '0';
-            
-            iframe.onload = function() {
-                try {
-                    // iframe 내부의 이미지에 접근 시도
-                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-                    const img = iframeDoc.querySelector('img');
-                    
-                    if (img && img.src) {
-                        console.log(`Iframe method successful for ${name}`);
-                        imgElement.src = img.src;
-                        document.body.removeChild(iframe);
-                        resolve();
-                    } else {
-                        throw new Error('No image found in iframe');
-                    }
-                } catch (error) {
-                    console.log(`Iframe method error for ${name}:`, error);
-                    document.body.removeChild(iframe);
-                    reject(error);
-                }
-            };
-            
-            iframe.onerror = function() {
-                console.log(`Iframe load failed for ${name}`);
-                document.body.removeChild(iframe);
-                reject(new Error('Iframe load failed'));
-            };
-            
-            document.body.appendChild(iframe);
-            iframe.src = url;
-            
-            // 타임아웃 설정
-            setTimeout(() => {
-                if (iframe.parentNode) {
-                    document.body.removeChild(iframe);
-                    reject(new Error('Iframe method timeout'));
-                }
-            }, 10000);
-        });
-    }
-
-    function tryJSONPProxy(imgElement, url, name) {
-        return new Promise((resolve, reject) => {
-            console.log(`Trying JSONP proxy for ${name}`);
-            
-            // JSONP 스타일의 이미지 프록시 서비스들
-            const jsonpProxies = [
-                `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
-                `https://images.weserv.nl/?url=${encodeURIComponent(url)}`,
-                `https://wsrv.nl/?url=${encodeURIComponent(url)}`
-            ];
-            
-            let proxyIndex = 0;
-            
-            function tryNextJSONPProxy() {
-                if (proxyIndex >= jsonpProxies.length) {
-                    reject(new Error('All JSONP proxies failed'));
-                    return;
-                }
-                
-                const proxyUrl = jsonpProxies[proxyIndex];
-                console.log(`Trying JSONP proxy ${proxyIndex + 1} for ${name}: ${proxyUrl}`);
-                
-                const testImg = new Image();
-                testImg.onload = function() {
-                    console.log(`JSONP proxy ${proxyIndex + 1} successful for ${name}`);
-                    imgElement.src = proxyUrl;
-                    resolve();
-                };
-                testImg.onerror = function() {
-                    console.log(`JSONP proxy ${proxyIndex + 1} failed for ${name}`);
-                    proxyIndex++;
-                    setTimeout(tryNextJSONPProxy, 1000);
-                };
-                testImg.src = proxyUrl;
-            }
-            
-            tryNextJSONPProxy();
-        });
+            }, 3000);
+        }
     }
 
     function createErrorImageDataUrl(name) {
